@@ -1,5 +1,7 @@
 import java.util.Scanner;
 import java.util.*;
+import java.io.*;
+
 
 public class AnalizadorDeNotas {
     private double[][] notas;
@@ -7,45 +9,88 @@ public class AnalizadorDeNotas {
     private int[] rut;
     private int cantEstudiantes;
     private int cantEvaluaciones;
+
     private double[] promediosEstudiantes;
     private double[] promediosEvaluaciones;
 
-    public AnalizadorDeNotas(int estudiantes, int evaluaciones, String[] nombresEvaluaciones) {
+
+
+    public AnalizadorDeNotas(int estudiantes, int evaluaciones) {
         this.cantEstudiantes = estudiantes;
         this.cantEvaluaciones = evaluaciones;
-        this.notas = new double[cantEstudiantes][cantEvaluaciones];
-        this.evaluaciones = new String[cantEvaluaciones];
-        this.rut = new int[cantEstudiantes];
+        this.notas = new double[estudiantes][evaluaciones];
+        this.evaluaciones = new String[evaluaciones];
+        this.rut = new int[estudiantes];
 
         Random random = new Random();
 
-        for (int j = 0; j < cantEvaluaciones; j++) {
+
+        for (int j = 0; j < evaluaciones; j++) {
             this.evaluaciones[j] = "Eval" + j;
         }
 
-        for (int i = 0; i < cantEstudiantes; i++) {
+
+        for (int i = 0; i < estudiantes; i++) {
             this.rut[i] = 100000000 + i;
-            for (int j = 0; j < cantEvaluaciones; j++) {
-                this.notas[i][j] = random.nextDouble() * 7;
+            for (int j = 0; j < evaluaciones; j++) {
+                this.notas[i][j] = random.nextDouble() * 7.0;
             }
         }
 
+        recomputeCaches();
+    }
+
+    public AnalizadorDeNotas(int estudiantes, int evaluaciones, String[] nombresEvaluaciones) {
+        this(estudiantes, evaluaciones); // inicializa todo con nombres por defecto
         if (nombresEvaluaciones != null) {
             for (int j = 0; j < Math.min(cantEvaluaciones, nombresEvaluaciones.length); j++) {
                 this.evaluaciones[j] = nombresEvaluaciones[j];
             }
         }
+
+    }
+    private void checkEvalIndex(int index) {
+        if (index < 0 || index >= cantEvaluaciones) {
+            throw new IllegalArgumentException("Índice de evaluación fuera de rango: " + index);
+        }
     }
 
+    private void checkEstIndex(int index) {
+        if (index < 0 || index >= cantEstudiantes) {
+            throw new IllegalArgumentException("Índice de estudiante fuera de rango: " + index);
+        }
+    }
+
+    private void recomputeCaches() {
+
+        promediosEstudiantes = new double[cantEstudiantes];
+        for (int i = 0; i < cantEstudiantes; i++) {
+            double s = 0;
+            for (int j = 0; j < cantEvaluaciones; j++) s += notas[i][j];
+            promediosEstudiantes[i] = s / cantEvaluaciones;
+        }
+
+
+        promediosEvaluaciones = new double[cantEvaluaciones];
+        for (int j = 0; j < cantEvaluaciones; j++) {
+            double s = 0;
+            for (int i = 0; i < cantEstudiantes; i++) s += notas[i][j];
+            promediosEvaluaciones[j] = s / cantEstudiantes;
+        }
+    }
+
+
     public double calcularPromedioEstudiantes(int numEstudiante) {
+        checkEstIndex(numEstudiante);
         double suma = 0;
-        for (int i = 0; i < cantEvaluaciones; i++) {
-            suma += notas[numEstudiante][i];
+        for (int j = 0; j < cantEvaluaciones; j++) {
+            suma += notas[numEstudiante][j];
         }
         return suma / cantEvaluaciones;
     }
 
     public double calcularPromedioEvaluacion(int index) {
+        checkEvalIndex(index);
         double suma = 0;
         for (int i = 0; i < cantEstudiantes; i++) {
             suma += notas[i][index];
@@ -54,25 +99,181 @@ public class AnalizadorDeNotas {
     }
 
     public double calcularVarianzaEstudiantes(int index) {
+        checkEstIndex(index);
         double promedio = calcularPromedioEstudiantes(index);
         double suma = 0;
-        for (int i = 0; i < cantEvaluaciones; i++) {
-            suma += Math.pow(notas[index][i] - promedio, 2);
+        for (int j = 0; j < cantEvaluaciones; j++) {
+            double d = notas[index][j] - promedio;
+            suma += d * d;
         }
-        return suma / cantEvaluaciones;
+        return suma / cantEvaluaciones; // varianza poblacional
     }
 
     public double calcularVarianzaEvaluacion(int index) {
+        checkEvalIndex(index);
         double promedio = calcularPromedioEvaluacion(index);
         double suma = 0;
         for (int i = 0; i < cantEstudiantes; i++) {
-            suma += Math.pow(notas[i][index] - promedio, 2);
+            double d = notas[i][index] - promedio;
+            suma += d * d;
         }
         return suma / cantEstudiantes;
     }
 
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
+
+    public double[] calcularPromediosEstudiantes() {
+        double[] promedios = new double[cantEstudiantes];
+        for (int i = 0; i < cantEstudiantes; i++) {
+            double suma = 0;
+            for (int j = 0; j < cantEvaluaciones; j++) {
+                suma += notas[i][j];
+            }
+            promedios[i] = suma / cantEvaluaciones;
+        }
+        return promedios;
+    }
+
+    public double[] calcularVarianzaEstudiantes() {
+        double[] var = new double[cantEstudiantes];
+        for (int i = 0; i < cantEstudiantes; i++) {
+            var[i] = calcularVarianzaEstudiantes(i);
+        }
+        return var;
+    }
+
+
+    public double[] calcularPromedioEvaluaciones(String[] evaluacionesSeleccionadas) {
+        double[] promedios = new double[cantEstudiantes];
+        if (evaluacionesSeleccionadas == null || evaluacionesSeleccionadas.length == 0) {
+            return promedios;
+        }
+
+        int[] indices = new int[cantEvaluaciones];
+        int cont = 0;
+
+        for (int j = 0; j < evaluacionesSeleccionadas.length; j++) {
+            String nombreEval = evaluacionesSeleccionadas[j];
+            for (int i = 0; i < evaluaciones.length; i++) {
+                if (evaluaciones[i] != null && evaluaciones[i].equals(nombreEval)) {
+                    indices[cont] = i;
+                    cont++;
+                    break;
+                }
+            }
+        }
+        if (cont == 0) return promedios;
+        for (int i = 0; i < cantEstudiantes; i++) {
+            double suma = 0;
+            for (int k = 0; k < cont; k++) {
+                suma += notas[i][indices[k]];
+            }
+            promedios[i] = suma / cont;
+        }
+        return promedios;
+    }
+
+
+    public String encontrarMaximo(int index) {
+        checkEvalIndex(index);
+        int pos = 0;
+        double max = notas[0][index];
+        for (int i = 1; i < cantEstudiantes; i++) {
+            if (notas[i][index] > max) {
+                max = notas[i][index];
+                pos = i;
+            }
+        }
+        return String.valueOf(rut[pos]);
+    }
+
+    public double[] calcularPromediosEstudiantesOptimizado() {
+        return Arrays.copyOf(promediosEstudiantes, promediosEstudiantes.length);
+    }
+
+    public double[] calcularPromedioEvaluacionesOptimizado() {
+        return Arrays.copyOf(promediosEvaluaciones, promediosEvaluaciones.length);
 
     }
-}
+
+
+
+
+    private static long median(long[] a) {
+        long[] c = Arrays.copyOf(a, a.length);
+        Arrays.sort(c);
+        int n = c.length;
+        if ((n & 1) == 1) return c[n / 2];
+        return (c[n / 2 - 1] + c[n / 2]) / 2;
+    }
+    public static void main(String[] args) {
+        final int P = 100;
+        final int M = 10;
+        final int R = 15;
+        final int F = 100;
+
+        long[] mPE   = new long[P + 1];
+        long[] mPEop = new long[P + 1];
+        long[] mEv   = new long[P + 1];
+        long[] mEvOp = new long[P + 1];
+        long[] mVar  = new long[P + 1];
+        long[] mMax  = new long[P + 1];
+
+        for (int i = 1; i <= P; i++) {
+            int N = i * F;
+            long[] t1 = new long[R], t2 = new long[R], t3 = new long[R],
+            t4 = new long[R], t5 = new long[R], t6 = new long[R];
+
+            for (int r = 0; r < R; r++) {
+                AnalizadorDeNotas A = new AnalizadorDeNotas(N, M);
+                long t0, t;
+
+                t0 = System.nanoTime(); A.calcularPromediosEstudiantes();
+                t  = System.nanoTime(); t1[r] = t - t0;
+
+                t0 = System.nanoTime(); A.calcularPromediosEstudiantesOptimizado();
+                t  = System.nanoTime(); t2[r] = t - t0;
+
+                t0 = System.nanoTime(); for (int j = 0; j < M; j++) A.calcularPromedioEvaluacion(j);
+                t  = System.nanoTime(); t3[r] = t - t0;
+
+                t0 = System.nanoTime(); A.calcularPromedioEvaluacionesOptimizado();
+                t  = System.nanoTime(); t4[r] = t - t0;
+
+                t0 = System.nanoTime(); A.calcularVarianzaEstudiantes();
+                t  = System.nanoTime(); t5[r] = t - t0;
+
+                t0 = System.nanoTime(); for (int j = 0; j < M; j++) A.encontrarMaximo(j);
+                t  = System.nanoTime(); t6[r] = t - t0;
+            }
+
+            mPE[i]   = median(t1);
+            mPEop[i] = median(t2);
+            mEv[i]   = median(t3);
+            mEvOp[i] = median(t4);
+            mVar[i]  = median(t5);
+            mMax[i]  = median(t6);
+        }
+
+        try (java.io.FileWriter wPE   = new java.io.FileWriter("t_PromediosEstudiantes.csv");
+             java.io.FileWriter wEv   = new java.io.FileWriter("t_PromediosEvaluaciones.csv");
+             java.io.FileWriter wVar  = new java.io.FileWriter("t_VarianzaEstudiantes.csv");
+             java.io.FileWriter wMax  = new java.io.FileWriter("t_EncontrarMaximo.csv")) {
+
+            wPE.write("N;tNormal;tOptimizada\n");
+            wEv.write("N;tNormal;tOptimizada\n");
+            wVar.write("N;tVarianzaEstudiantes\n");
+            wMax.write("N;tEncontrarMaximo\n");
+
+            for (int i = 1; i <= P; i++) {
+                int N = i * F;
+                wPE.write(N + ";" + mPE[i]   + ";" + mPEop[i] + "\n");
+                wEv.write(N + ";" + mEv[i]   + ";" + mEvOp[i] + "\n");
+                wVar.write(N + ";" + mVar[i] + "\n");
+                wMax.write(N + ";" + mMax[i] + "\n");
+            }
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Listo: se generaron los 4 CSV.");
+    }}
