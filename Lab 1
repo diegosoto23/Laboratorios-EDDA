@@ -106,7 +106,7 @@ public class AnalizadorDeNotas {
             double d = notas[index][j] - promedio;
             suma += d * d;
         }
-        return suma / cantEvaluaciones; // varianza poblacional
+        return suma / cantEvaluaciones;
     }
 
     public double calcularVarianzaEvaluacion(int index) {
@@ -185,7 +185,6 @@ public class AnalizadorDeNotas {
         }
         return String.valueOf(rut[pos]);
     }
-
     public double[] calcularPromediosEstudiantesOptimizado() {
         return Arrays.copyOf(promediosEstudiantes, promediosEstudiantes.length);
     }
@@ -275,5 +274,5 @@ public class AnalizadorDeNotas {
             e.printStackTrace();
         }
 
-        System.out.println("Listo: se generaron los 4 CSV.");
+        System.out.println("Se generaron los 4 documentos CSV.");
     }}
