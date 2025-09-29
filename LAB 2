@@ -1,0 +1,354 @@
+        import java.util.*;
+        import java.io.*;
+        import java.nio.charset.StandardCharsets;
+
+class Nodo<Todo> {
+    private Todo valor;
+    private Nodo<Todo> siguiente;
+
+    public Nodo() {
+        this.valor = null;
+        this.siguiente = null;
+    }
+
+    public Nodo(Todo valor) {
+        this.valor = valor;
+        this.siguiente = null;
+    }
+
+    public Nodo(Todo valor, Nodo<Todo> siguiente) {
+        this.valor = valor;
+        this.siguiente = siguiente;
+    }
+
+    public Todo getValor() {
+        return valor;
+    }
+
+    public void setValor(Todo valor) {
+        this.valor = valor;
+    }
+
+    public Nodo<Todo> getSiguiente() {
+        return siguiente;
+    }
+
+    public void setSiguiente(Nodo<Todo> siguiente) {
+        this.siguiente = siguiente;
+    }
+}
+
+class PilaEnlazada<Todo> {
+    private Nodo<Todo> tope;
+    private int size;
+
+    public PilaEnlazada() {
+        this.tope = null;
+        this.size = 0;
+    }
+
+    public boolean isEmpty() {
+        return tope == null;
+    }
+
+    public Todo pop() {
+        if (isEmpty()) {
+            throw new RuntimeException("La pila está vacía");
+        }
+        Todo valor = tope.getValor();
+        tope = tope.getSiguiente();
+        size--;
+        return valor;
+    }
+
+    public void push(Todo valor) {
+        Nodo<Todo> nuevo = new Nodo<>(valor, tope);
+        tope = nuevo;
+        size++;
+    }
+
+    public Todo peek() {
+        if (isEmpty()) {
+            throw new RuntimeException("Pila vacía");
+        }
+        return tope.getValor();
+    }
+
+    public int size() {
+        return size;
+    }
+
+    public void vaciar() {
+        tope = null;
+        size = 0;
+    }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        Nodo<Todo> actual = tope;
+        while (actual != null) {
+            sb.append(actual.getValor());
+            if (actual.getSiguiente() != null) {
+                sb.append(" -> ");
+            }
+            actual = actual.getSiguiente();
+        }
+        return sb.toString();
+    }
+}
+
+class ColaEnlazada<Todo> {
+    private Nodo<Todo> inicio;
+    private Nodo<Todo> fin;
+    private int size;
+
+    public ColaEnlazada() {
+        this.inicio = null;
+        this.fin = null;
+        this.size = 0;
+    }
+
+    public boolean add(Todo valor) {
+        Nodo<Todo> nuevo = new Nodo<>(valor);
+        if (isEmpty()) {
+            inicio = fin = nuevo;
+        } else {
+            fin.setSiguiente(nuevo);
+            fin = nuevo;
+        }
+        size++;
+        return true;
+    }
+
+    public Todo poll() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("Cola vacía");
+        }
+        Todo valor = inicio.getValor();
+        inicio = inicio.getSiguiente();
+        if (inicio == null) {
+            fin = null;
+        }
+        size--;
+        return valor;
+    }
+
+    public Todo peek() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("Cola vacía");
+        }
+        return inicio.getValor();
+    }
+
+    public boolean isEmpty() {
+        return inicio == null;
+    }
+
+    public int size() {
+        return size;
+    }
+
+    public void vaciar() {
+        inicio = null;
+        fin = null;
+        size = 0;
+    }
+}
+
+class Alerta {
+    final String nombre;
+    final double probFallo;
+
+    public Alerta(String nombre, double probFallo) {
+        this.nombre = nombre;
+        this.probFallo = probFallo;
+    }
+
+    public boolean procesarLlamada(PilaEnlazada<Alerta> pilaActual, int limite, Random rng) {
+        if (pilaActual.size() >= limite) {
+            return true;
+        }
+        double numeroAleatorio = rng.nextDouble();
+        if (numeroAleatorio < this.probFallo) {
+            return false;
+        }
+        String idNuevaAlerta = "AlertaSecundaria-Nivel-" + pilaActual.size();
+        Alerta alertaSecundaria = new Alerta(idNuevaAlerta, this.probFallo);
+        pilaActual.push(alertaSecundaria);
+        return alertaSecundaria.procesarLlamada(pilaActual, limite, rng);
+    }
+
+    public String toString() {
+        return nombre + "(pf=" + String.format("%.3f", probFallo) + ")";
+    }
+}
+
+
+public class Main {
+    static long semilla = 42L;
+    static double probFallo = 0.10;
+    static int numAlertas = 10;
+    static int limRecursion = 15;
+    static Random rng = new Random(semilla);
+
+    static ColaEnlazada<Alerta> coladeAlertas = new ColaEnlazada<>();
+    static PilaEnlazada<Alerta> piladeLlamadas = new PilaEnlazada<>();
+
+    // ----------- Simulación normal -----------
+    public static void generarAlertas(int n, double probFallo, Random random) {
+        for (int i = 0; i < n; i++) {
+            coladeAlertas.add(new Alerta("AlertaInicial-" + i, probFallo));
+        }
+    }
+
+    public static void iniciarSimulacion(int limite, Random random, boolean imprimirTraza) {
+        while (!coladeAlertas.isEmpty()) {
+            Alerta alertaActual = coladeAlertas.poll();
+            System.out.println("Iniciando para: " + alertaActual.nombre + );
+            piladeLlamadas.push(alertaActual);
+            boolean fueExitoso = alertaActual.procesarLlamada(piladeLlamadas, limite, random);
+            if (fueExitoso) {
+                System.out.println("ÉXITO (limite=" + limite + ")");
+            } else {
+                System.out.println("FALLO: caso interrumpido.");
+                if (imprimirTraza) {
+                    System.out.println("Stack Trace:");
+                    System.out.println(piladeLlamadas.toString());
+                }
+            }
+            piladeLlamadas.vaciar();
+            System.out.println("--");
+        }
+    }
+
+    // Experimento 1
+    public static void experimentoPilas() {
+        System.out.println(" Experimento 1: Pila ");
+        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
+                new FileOutputStream("exp1_pila.csv"), StandardCharsets.UTF_8))) {
+            pw.println("n,PilaEnlazada,Stack");
+            for (int i = 1; i <= 10; i++) {
+                int n = 10 * i;
+
+                PilaEnlazada<Integer> pila1 = new PilaEnlazada<>();
+                long inicio = System.nanoTime();
+                for (int j = 0; j < n; j++) pila1.push(j);
+                for (int j = 0; j < n / 2; j++) pila1.pop();
+                long fin = System.nanoTime();
+                long tiempoPila = fin - inicio;
+
+                Stack<Integer> pila2 = new Stack<>();
+                inicio = System.nanoTime();
+                for (int j = 0; j < n; j++) pila2.push(j);
+                for (int j = 0; j < n / 2; j++) pila2.pop();
+                fin = System.nanoTime();
+                long tiempoStack = fin - inicio;
+
+                System.out.printf("n=%d | PilaEnlazada=%d ns | Stack=%d ns%n", n, tiempoPila, tiempoStack);
+                pw.printf("%d,%d,%d%n", n, tiempoPila, tiempoStack);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        System.out.println();
+    }
+
+    // Experimento 2
+    public static void experimentoColas() {
+        System.out.println("Experimento 2: Cola ");
+        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
+                new FileOutputStream("exp2_cola.csv"), StandardCharsets.UTF_8))) {
+            pw.println("n,ColaEnlazada,Queue");
+            for (int i = 1; i <= 10; i++) {
+                int n = 10 * i;
+
+                ColaEnlazada<Integer> cola1 = new ColaEnlazada<>();
+                long inicio = System.nanoTime();
+                for (int j = 0; j < n; j++) cola1.add(j);
+                for (int j = 0; j < n / 2; j++) cola1.poll();
+                long fin = System.nanoTime();
+                long tiempoCola = fin - inicio;
+
+                Queue<Integer> cola2 = new LinkedList<>();
+                inicio = System.nanoTime();
+                for (int j = 0; j < n; j++) cola2.add(j);
+                for (int j = 0; j < n / 2; j++) cola2.poll();
+                fin = System.nanoTime();
+                long tiempoQueue = fin - inicio;
+
+                System.out.printf("n=%d | ColaEnlazada=%d ns | Queue=%d ns%n", n, tiempoCola, tiempoQueue);
+                pw.printf("%d,%d,%d%n", n, tiempoCola, tiempoQueue);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        System.out.println();
+    }
+
+    // Experimento 3
+    public static void experimentoSimulacion() {
+        System.out.println("Experimento 3: Simulación ");
+
+        int numAlertas = 50;
+
+        // Parte 1 profundidad
+        System.out.println("Parte 1: Impacto del limiteRecursion");
+        for (int limite : new int[]{5, 10, 15, 50}) {
+            int exitos = 0, total = numAlertas;
+            long inicio = System.nanoTime();
+            for (int i = 0; i < numAlertas; i++) {
+                PilaEnlazada<Alerta> pila = new PilaEnlazada<>();
+                Alerta a = new Alerta("AlertaInicial-" + i, 0.10);
+                pila.push(a);
+                boolean ok = a.procesarLlamada(pila, limite, rng);
+                if (ok) exitos++;
+            }
+            long fin = System.nanoTime();
+            long tiempo = fin - inicio;
+            double tasaExito = 100.0 * exitos / total;
+            System.out.printf("limite=%d | tasaExito=%.2f%% | tiempo=%d ns%n",
+                    limite, tasaExito, tiempo);
+        }
+        System.out.println();
+
+        // Parte 2 probFallo
+        System.out.println("Parte 2: Impacto de probFallo");
+        int limiteRecursion = 20;
+        for (double pf : new double[]{0.01, 0.05, 0.10, 0.30}) {
+            int exitos = 0, total = numAlertas;
+            int profundidadTotalFallos = 0, fallos = 0;
+            long inicio = System.nanoTime();
+            for (int i = 0; i < numAlertas; i++) {
+                PilaEnlazada<Alerta> pila = new PilaEnlazada<>();
+                Alerta a = new Alerta("AlertaInicial-" + i, pf);
+                pila.push(a);
+                boolean ok = a.procesarLlamada(pila, limiteRecursion, rng);
+                if (ok) {
+                    exitos++;
+                } else {
+                    fallos++;
+                    profundidadTotalFallos += pila.size();
+                }
+            }
+            long fin = System.nanoTime();
+            long tiempo = fin - inicio;
+            double tasaExito = 100.0 * exitos / total;
+            double profProm = (fallos == 0) ? 0 : (double) profundidadTotalFallos / fallos;
+            System.out.printf("probFallo=%.0f%% | tasaExito=%.2f%% | profProm=%.2f | tiempo=%d ns%n",
+                    pf * 100, tasaExito, profProm, tiempo);
+        }
+        System.out.println();
+    }
+
+    //MAIN
+    public static void main(String[] args) {
+        System.out.println("Simulación normal");
+        generarAlertas(numAlertas, probFallo, rng);
+        iniciarSimulacion(limRecursion, rng, true);
+
+        System.out.println();
+        experimentoPilas();
+        experimentoColas();
+        experimentoSimulacion();
+    }
+}
