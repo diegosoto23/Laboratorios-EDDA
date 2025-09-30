@@ -204,7 +204,7 @@ public class Main {
     public static void iniciarSimulacion(int limite, Random random, boolean imprimirTraza) {
         while (!coladeAlertas.isEmpty()) {
             Alerta alertaActual = coladeAlertas.poll();
-            System.out.println("Iniciando para: " + alertaActual.nombre + );
+            System.out.println("Iniciando para: " + alertaActual.nombre );
             piladeLlamadas.push(alertaActual);
             boolean fueExitoso = alertaActual.procesarLlamada(piladeLlamadas, limite, random);
             if (fueExitoso) {
@@ -226,7 +226,7 @@ public class Main {
         System.out.println(" Experimento 1: Pila ");
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
                 new FileOutputStream("exp1_pila.csv"), StandardCharsets.UTF_8))) {
-            pw.println("n,PilaEnlazada,Stack");
+            pw.println("n;PilaEnlazada;Stack");
             for (int i = 1; i <= 10; i++) {
                 int n = 10 * i;
 
@@ -245,7 +245,7 @@ public class Main {
                 long tiempoStack = fin - inicio;
 
                 System.out.printf("n=%d | PilaEnlazada=%d ns | Stack=%d ns%n", n, tiempoPila, tiempoStack);
-                pw.printf("%d,%d,%d%n", n, tiempoPila, tiempoStack);
+                pw.printf("%d;%d;%d%n", n, tiempoPila, tiempoStack);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -258,7 +258,7 @@ public class Main {
         System.out.println("Experimento 2: Cola ");
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
                 new FileOutputStream("exp2_cola.csv"), StandardCharsets.UTF_8))) {
-            pw.println("n,ColaEnlazada,Queue");
+            pw.println("n;ColaEnlazada;Queue");
             for (int i = 1; i <= 10; i++) {
                 int n = 10 * i;
 
@@ -277,7 +277,7 @@ public class Main {
                 long tiempoQueue = fin - inicio;
 
                 System.out.printf("n=%d | ColaEnlazada=%d ns | Queue=%d ns%n", n, tiempoCola, tiempoQueue);
-                pw.printf("%d,%d,%d%n", n, tiempoCola, tiempoQueue);
+                pw.printf("%d;%d;%d%n", n, tiempoCola, tiempoQueue);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -352,3 +352,4 @@ public class Main {
         experimentoSimulacion();
     }
 }
+
