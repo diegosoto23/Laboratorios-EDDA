@@ -1,0 +1,339 @@
+import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+
+class Movie implements Comparable<Movie> {
+    private String title;
+    private String director;
+    private String genre;
+    private int releaseYear;
+    private double rating;
+
+    public Movie(String title, String director, String genre, int releaseYear, double rating) {
+        this.title = title;
+        this.director = director;
+        this.genre = genre;
+        this.releaseYear = releaseYear;
+        this.rating = rating;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDirector() {
+        return director;
+    }
+
+    public String getGenre() {
+        return genre;
+    }
+
+    public int getReleaseYear() {
+        return releaseYear;
+    }
+
+    public double getRating() {
+        return rating;
+    }
+
+    @Override
+    public String toString() {
+        return "Movie{" + "titulo: " + title + "|" + " director: " + director + "|" + " genero: " + genre + "|" + " releaseYear: " + releaseYear + "|" + " rating: " + rating + '}';
+    }
+
+    @Override
+    public int compareTo(Movie other) {
+        return Double.compare(this.rating, other.rating);
+    }
+
+    public static Comparator<Movie> directorComparator = Comparator.comparing(Movie::getDirector);
+    public static Comparator<Movie> genreComparator = Comparator.comparing(Movie::getGenre);
+    public static Comparator<Movie> yearComparator = Comparator.comparingInt(Movie::getReleaseYear);
+}
+
+class MovieCatalog {
+    private ArrayList<Movie> movies;
+    private String sortedByAttribute;
+
+    public MovieCatalog(ArrayList<Movie> movies) {
+        this.movies = new ArrayList<>(movies);
+        this.sortedByAttribute = null;
+    }
+
+    public ArrayList<Movie> getMoviesByDirector(String director) {
+        if ("director".equals(sortedByAttribute)) {
+            return binarySearchByDirector(director);
+        }
+        return linearSearchByDirector(director);
+    }
+
+    private ArrayList<Movie> linearSearchByDirector(String director) {
+        ArrayList<Movie> result = new ArrayList<>();
+        for (Movie movie : movies) {
+            if (movie.getDirector().equals(director)) {
+                result.add(movie);
+            }
+        }
+        return result;
+    }
+
+    private int binarySearch(String director) {
+        int low = 0;
+        int high = movies.size() - 1;
+        while (low <= high) {
+            int mid = low + (high - low) / 2;
+            Movie midVal = movies.get(mid);
+            int comparison = director.compareTo(midVal.getDirector());
+            if (comparison == 0) {
+                return mid;
+            } else if (comparison < 0) {
+                high = mid - 1;
+            } else {
+                low = mid + 1;
+            }
+        }
+        return -1;
+    }
+
+    private ArrayList<Movie> binarySearchByDirector(String director) {
+        ArrayList<Movie> result = new ArrayList<>();
+        int index = binarySearch(director);
+
+        if (index != -1) {
+            result.add(movies.get(index));
+            int left = index - 1;
+            while (left >= 0 && movies.get(left).getDirector().equals(director)) {
+                result.add(movies.get(left));
+                left--;
+            }
+            int right = index + 1;
+            while (right < movies.size() && movies.get(right).getDirector().equals(director)) {
+                result.add(movies.get(right));
+                right++;
+            }
+        }
+        return result;
+    }
+
+    public void sortByAlgorithm(String algorithm, String attribute) {
+        Comparator<Movie> comparator;
+
+        if ("director".equals(attribute)) {
+            comparator = Movie.directorComparator;
+        } else if ("genre".equals(attribute)) {
+            comparator = Movie.genreComparator;
+        } else if ("year".equals(attribute)) {
+            if ("radixSort".equalsIgnoreCase(algorithm)) {
+                radixSort();
+                this.sortedByAttribute = "year";
+                return;
+            }
+            comparator = Movie.yearComparator;
+        } else {
+            comparator = Comparator.naturalOrder();
+            attribute = "rating";
+        }
+
+        if ("insertionSort".equalsIgnoreCase(algorithm)) {
+            insertionSort(comparator);
+        } else if ("mergeSort".equalsIgnoreCase(algorithm)) {
+            mergeSort(comparator);
+        } else {
+            Collections.sort(movies, comparator);
+        }
+        this.sortedByAttribute = attribute;
+    }
+
+    private void insertionSort(Comparator<Movie> comparator) {
+        for (int i = 1; i < movies.size(); i++) {
+            Movie key = movies.get(i);
+            int j = i - 1;
+            while (j >= 0 && comparator.compare(movies.get(j), key) > 0) {
+                movies.set(j + 1, movies.get(j));
+                j--;
+            }
+            movies.set(j + 1, key);
+        }
+    }
+
+    private void mergeSort(Comparator<Movie> comparator) {
+        if (movies.size() <= 1) return;
+        ArrayList<Movie> temp = new ArrayList<>(movies);
+        mergeSortHelper(temp, 0, movies.size() - 1, comparator);
+    }
+
+    private void mergeSortHelper(ArrayList<Movie> temp, int left, int right, Comparator<Movie> comparator) {
+        if (left < right) {
+            int mid = left + (right - left) / 2;
+            mergeSortHelper(temp, left, mid, comparator);
+            mergeSortHelper(temp, mid + 1, right, comparator);
+            merge(temp, left, mid, right, comparator);
+        }
+    }
+
+    private void merge(ArrayList<Movie> temp, int left, int mid, int right, Comparator<Movie> comparator) {
+        for (int i = left; i <= right; i++) {
+            temp.set(i, movies.get(i));
+        }
+        int i = left;
+        int j = mid + 1;
+        int k = left;
+        while (i <= mid && j <= right) {
+            if (comparator.compare(temp.get(i), temp.get(j)) <= 0) {
+                movies.set(k++, temp.get(i++));
+            } else {
+                movies.set(k++, temp.get(j++));
+            }
+        }
+        while (i <= mid) {
+            movies.set(k++, temp.get(i++));
+        }
+    }
+
+    private void radixSort() {
+        int maxYear = 0;
+        for (Movie movie : movies) {
+            if (movie.getReleaseYear() > maxYear) {
+                maxYear = movie.getReleaseYear();
+            }
+        }
+        for (int exp = 1; maxYear / exp > 0; exp *= 10) {
+            countingSortByDigit(exp);
+        }
+    }
+
+    private void countingSortByDigit(int exp) {
+        int n = movies.size();
+        Movie[] output = new Movie[n];
+        int[] count = new int[10];
+        for (Movie movie : movies) {
+            count[(movie.getReleaseYear() / exp) % 10]++;
+        }
+        for (int i = 1; i < 10; i++) {
+            count[i] += count[i - 1];
+        }
+        for (int i = n - 1; i >= 0; i--) {
+            int digitIndex = (movies.get(i).getReleaseYear() / exp) % 10;
+            output[count[digitIndex] - 1] = movies.get(i);
+            count[digitIndex]--;
+        }
+        for (int i = 0; i < n; i++) {
+            movies.set(i, output[i]);
+        }
+    }
+}
+
+class CSVReader {
+    public static ArrayList<Movie> loadMovies(String filePath) {
+        ArrayList<Movie> movies = new ArrayList<>();
+        String line = "";
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            br.readLine();
+            while ((line = br.readLine()) != null) {
+                String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+                try {
+                    String title = values[1];
+                    int releaseYear = 0;
+                    try {
+                        releaseYear = Integer.parseInt(values[2]);
+                    } catch (NumberFormatException e) {
+                        continue;
+                    }
+                    String genre = values[5];
+                    double rating = Double.parseDouble(values[6]);
+                    String director = values[9];
+                    movies.add(new Movie(title, director, genre, releaseYear, rating));
+                } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
+                    System.err.println("Error al procesar la línea: " + line);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return movies;
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        ArrayList<Movie> allMovies = CSVReader.loadMovies("imdb_top_1000.csv");
+        if (allMovies.isEmpty()) {
+            System.out.println("No se pudieron cargar las películas. Asegúrate de que 'imdb_top_1000.csv' esté en la raíz del proyecto.");
+            return;
+        }
+        runExperiment1(allMovies);
+        runExperiment2(allMovies);
+        System.out.println("\nProceso finalizado.");
+        System.out.println("Se generaron los archivos 'resultados_ordenamiento.csv' y 'resultados_busqueda.csv' en la carpeta del proyecto.");
+    }
+
+    public static void runExperiment1(ArrayList<Movie> allMovies) {
+        try (PrintWriter writer = new PrintWriter(new FileWriter("resultados_ordenamiento.csv"))) {
+            writer.println("TamañoCatálogo,TiempoInsertionSort_ns,TiempoMergeSort_ns,TiempoRadixSort_ns");
+            for (int n = 100; n <= allMovies.size(); n += 100) {
+                ArrayList<Movie> sublist = new ArrayList<>(allMovies.subList(0, n));
+
+                MovieCatalog catalog1 = new MovieCatalog(sublist);
+                long startTime1 = System.nanoTime();
+                catalog1.sortByAlgorithm("insertionSort", "rating");
+                long endTime1 = System.nanoTime();
+                long duration1 = endTime1 - startTime1;
+
+                MovieCatalog catalog2 = new MovieCatalog(sublist);
+                long startTime2 = System.nanoTime();
+                catalog2.sortByAlgorithm("mergeSort", "rating");
+                long endTime2 = System.nanoTime();
+                long duration2 = endTime2 - startTime2;
+
+                MovieCatalog catalog3 = new MovieCatalog(sublist);
+                long startTime3 = System.nanoTime();
+                catalog3.sortByAlgorithm("radixSort", "year");
+                long endTime3 = System.nanoTime();
+                long duration3 = endTime3 - startTime3;
+
+                writer.printf("%d,%d,%d,%d\n", n, duration1, duration2, duration3);
+            }
+        } catch (IOException e) {
+            System.err.println("Error al escribir el archivo para el Experimento 1: " + e.getMessage());
+        }
+    }
+
+    public static void runExperiment2(ArrayList<Movie> allMovies) {
+        String[] directorsToSearch = {
+                "Christopher Nolan", "Quentin Tarantino", "Martin Scorsese", "Steven Spielberg", "David Fincher"
+        };
+        try (PrintWriter writer = new PrintWriter(new FileWriter("resultados_busqueda.csv"))) {
+            writer.println("Tamaño,TiempoPromedioLineal_ns,TiempoPromedioBinaria_ns");
+            for (int n = 100; n <= allMovies.size(); n += 100) {
+                ArrayList<Movie> sublist = new ArrayList<>(allMovies.subList(0, n));
+                long totalLinearTime = 0;
+                long totalBinaryTime = 0;
+                for (String director : directorsToSearch) {
+                    MovieCatalog unsortedCatalog = new MovieCatalog(sublist);
+                    long linearStartTime = System.nanoTime();
+                    unsortedCatalog.getMoviesByDirector(director);
+                    long linearEndTime = System.nanoTime();
+                    totalLinearTime += (linearEndTime - linearStartTime);
+
+                    MovieCatalog sortedCatalog = new MovieCatalog(sublist);
+                    sortedCatalog.sortByAlgorithm("mergeSort", "director");
+                    long binaryStartTime = System.nanoTime();
+                    sortedCatalog.getMoviesByDirector(director);
+                    long binaryEndTime = System.nanoTime();
+                    totalBinaryTime += (binaryEndTime - binaryStartTime);
+                }
+                long avgLinearTime = totalLinearTime / directorsToSearch.length;
+                long avgBinaryTime = totalBinaryTime / directorsToSearch.length;
+                writer.printf("%d,%d,%d\n", n, avgLinearTime, avgBinaryTime);
+            }
+        } catch (IOException e) {
+            System.err.println("Error al escribir el archivo para el Experimento 2: " + e.getMessage());
+        }
+    }
+}
